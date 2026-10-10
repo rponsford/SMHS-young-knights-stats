@@ -1,0 +1,892 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Young Knights Frosh Stats</title>
+<meta name="description" content="Season stats dashboard for the SMHS Young Knights freshman basketball team.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap">
+<style>
+  /* Layout: one centered column, tabs for Team / Games / Players, cards in an auto-fit grid. */
+  :root {
+    --font-anthropic-sans: "Source Sans 3", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    --font-anthropic-serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --color-bg: #f6f7f9; --color-panel: #ffffff; --color-fg: #17202e; --color-fg-muted: #5d6676;
+    --color-border-line: #dfe3ea; --color-ok: #1d7a46; --color-warn: #a06a00; --color-bad: #b4302b;
+    --series-1: #24539b; --series-2: #c4882b; --series-3: #4f8a6b; --series-4: #8a5aa6;
+    --cds-chart-muted: #b3bac6; --cds-chart-grid: #eceff4; --cds-chart-axis: #c4cad4; --cds-chart-reference: #8b93a1;
+    --cds-chart-status-critical: #c2453f;
+    --cds-surface-popover: #ffffff; --cds-border: #d5dae2; --cds-shadow-popover: 0 4px 16px rgba(20, 30, 50, .12); --cds-text-secondary: #5d6676;
+    --cds-font-size-caption: .8125rem; --cds-font-size-body: 1rem; --cds-font-size-heading: 1.0625rem; --cds-font-size-title: 1.875rem;
+    --cds-font-weight-medium: 600;
+    --cds-gap-xs: .25rem; --cds-gap-sm: .5rem; --cds-gap-md: .875rem; --cds-gap-lg: 1.5rem; --cds-gap-xl: 2.25rem;
+    --cds-pad-xs: .25rem; --cds-pad-sm: .5rem; --cds-pad-md: .75rem; --cds-pad-lg: 1rem; --cds-pad-xl: 1.5rem;
+    --cds-radius: 10px; --cds-dur-slow: .3s; --cds-ease-out: cubic-bezier(.2, .7, .2, 1);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-bg: #0f141c; --color-panel: #171e29; --color-fg: #e8ecf2; --color-fg-muted: #9aa4b4;
+      --color-border-line: #2a3341; --color-ok: #5cc28a; --color-warn: #e0b04f; --color-bad: #f07a72;
+      --series-1: #7ea8ec; --series-2: #e3b25e; --series-3: #7cc49c; --series-4: #c19ae0;
+      --cds-chart-muted: #5b6575; --cds-chart-grid: #222a36; --cds-chart-axis: #3a4454; --cds-chart-reference: #7d8797;
+      --cds-chart-status-critical: #f07a72;
+      --cds-surface-popover: #1f2733; --cds-border: #333d4c; --cds-shadow-popover: 0 6px 20px rgba(0, 0, 0, .45); --cds-text-secondary: #9aa4b4;
+      color-scheme: dark;
+    }
+  }
+  html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); }
+  body { font-family: var(--font-anthropic-sans); font-size: var(--cds-font-size-body); line-height: 1.45; -webkit-text-size-adjust: 100%; }
+  #dash-root { max-width: 1180px; margin-inline: auto; padding-inline: max(16px, env(safe-area-inset-left, 0px)); padding-block: calc(1.5rem + env(safe-area-inset-top, 0px)) calc(2.5rem + env(safe-area-inset-bottom, 0px)); }
+  [hidden] { display: none !important; }
+  .dash-skeleton { color: transparent !important; background: var(--cds-chart-grid); border-radius: 4px; }
+  .yk-foot { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+  @media (max-width: 480px) { :root { --cds-font-size-title: 1.5rem; } }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script src="assets/runtime.js"></script>
+</head>
+<body>
+<div id="dash-root">
+<style>
+  .yk { display: grid; gap: var(--cds-gap-lg); font-family: var(--font-anthropic-sans); }
+  .yk h1, .yk h2, .yk h3, .yk p { margin: 0; }
+  .yk-head { display: grid; gap: var(--cds-gap-xs); }
+  .yk-head h1 { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); text-wrap: balance; }
+  .yk-take { color: var(--color-fg-muted); max-width: 72ch; font-variant-numeric: tabular-nums; }
+  .yk-take b { color: var(--color-fg); font-weight: var(--cds-font-weight-medium); }
+  .yk-tabs { display: flex; flex-wrap: wrap; gap: var(--cds-gap-xs); border-bottom: 1px solid var(--color-border-line); }
+  .yk-tab { appearance: none; background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; padding: var(--cds-pad-sm) var(--cds-pad-md); font: inherit; color: var(--color-fg-muted); cursor: pointer; }
+  .yk-tab[aria-selected="true"] { color: var(--color-fg); border-bottom-color: var(--color-fg); font-weight: var(--cds-font-weight-medium); }
+  .yk-tab:focus-visible, .yk-sort:focus-visible, .yk-select:focus-visible, .yk-rows tr:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+  .yk-page { display: grid; gap: var(--cds-gap-lg); }
+  .yk-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr)); gap: var(--cds-gap-md); }
+  .yk-tile, .yk-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); min-width: 0; }
+  .yk-tile { display: grid; gap: var(--cds-gap-xs); align-content: start; }
+  .yk-lab { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+  .yk-big { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .yk-sub { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
+  .yk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: var(--cds-gap-md); }
+  .yk-card { display: grid; gap: var(--cds-gap-sm); align-content: start; }
+  .yk-card h2 { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); }
+  .yk-note { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+  .yk-cardhead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: var(--cds-gap-sm); }
+  .yk-legend { display: flex; flex-wrap: wrap; gap: var(--cds-gap-md); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+  .yk-legend span { display: inline-flex; align-items: center; gap: .35rem; }
+  .yk-sw { display: inline-block; width: .6rem; height: .6rem; border-radius: 2px; flex: none; }
+  .yk-chart { position: relative; min-height: 240px; }
+  .yk-chart svg { display: block; overflow: visible; }
+  .yk-chart text { font-family: var(--font-anthropic-sans); font-size: var(--cds-font-size-caption); fill: var(--color-fg-muted); }
+  .yk-chart text.yk-strong { fill: var(--color-fg); }
+  .yk-tip { position: absolute; z-index: 2; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); border-radius: var(--cds-radius); box-shadow: var(--cds-shadow-popover); padding: var(--cds-pad-xs) var(--cds-pad-sm); font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; white-space: nowrap; display: grid; gap: 2px; }
+  .yk-tip-h { color: var(--cds-text-secondary); }
+  .yk-tip-r { display: flex; align-items: center; gap: .4rem; }
+  .yk-tip-r b { margin-left: auto; padding-left: var(--cds-pad-sm); font-weight: var(--cds-font-weight-medium); }
+  .yk-factors { display: grid; gap: var(--cds-gap-md); }
+  .yk-factor { display: grid; gap: var(--cds-gap-xs); }
+  .yk-f-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--cds-gap-sm); }
+  .yk-f-name { font-weight: var(--cds-font-weight-medium); }
+  .yk-chip { font-size: var(--cds-font-size-caption); }
+  .yk-chip.ok { color: var(--color-ok); }
+  .yk-chip.bad { color: var(--color-bad); }
+  .yk-bar-row { display: grid; grid-template-columns: 6.5rem 1fr 3.5rem; align-items: center; gap: var(--cds-gap-sm); font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+  .yk-bar-row .who { color: var(--color-fg-muted); }
+  .yk-bar-row .val { text-align: right; }
+  .yk-track { height: 10px; border-radius: 5px; background: var(--cds-chart-grid); overflow: hidden; }
+  .yk-fill { height: 100%; width: 0; border-radius: 5px; }
+  .yk-tablewrap { overflow-x: auto; min-width: 0; }
+  .yk-tablewrap.tall { max-height: 30rem; overflow: auto; }
+  .yk table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: var(--cds-font-size-caption); }
+  .yk th, .yk td { padding: var(--cds-pad-xs) var(--cds-pad-sm); text-align: right; white-space: nowrap; border-bottom: 1px solid var(--color-border-line); }
+  .yk th { position: sticky; top: 0; background: var(--color-panel); color: var(--color-fg-muted); font-weight: var(--cds-font-weight-medium); }
+  .yk th.l, .yk td.l { text-align: left; }
+  .yk td.name { color: var(--color-fg); font-weight: var(--cds-font-weight-medium); }
+  .yk-sort { appearance: none; background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; }
+  .yk th[aria-sort] .yk-sort { color: var(--color-fg); }
+  .yk-rows tr[data-key] { cursor: pointer; }
+  .yk-rows tr[data-key]:hover td { background: var(--cds-chart-grid); }
+  .yk-rows tr.sel td { background: var(--cds-chart-grid); }
+  .yk-rows tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--color-fg); }
+  .yk td.w { color: var(--color-ok); font-weight: var(--cds-font-weight-medium); }
+  .yk td.lo { color: var(--color-bad); font-weight: var(--cds-font-weight-medium); }
+  .yk td.weak { color: var(--color-bad); }
+  .yk-select { font: inherit; padding: var(--cds-pad-xs) var(--cds-pad-sm); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-bg); color: var(--color-fg); }
+  .yk-statline { display: flex; flex-wrap: wrap; gap: var(--cds-gap-md); }
+  .yk-stat { display: grid; gap: 2px; }
+  .yk-stat .yk-big { font-size: var(--cds-font-size-heading); font-family: var(--font-anthropic-serif); }
+  .yk-fail { display: flex; align-items: center; justify-content: center; gap: .5rem; min-height: inherit; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+  .yk-fail::before { content: ""; width: .375rem; height: .375rem; border-radius: 50%; background: var(--color-bad); }
+  .yk [data-dash-source-state="empty"] { color: transparent; }
+  .yk [data-dash-source-state="refreshing"] { opacity: .5; transition: opacity var(--cds-dur-slow); }
+</style>
+
+<div class="yk">
+  <header class="yk-head">
+    <h1 id="title">Young Knights Frosh, Fall 2026</h1>
+    <p class="yk-take" id="takeaway"><span class="dash-skeleton">—</span></p>
+  </header>
+
+  <nav class="yk-tabs" role="tablist" aria-label="Dashboard pages">
+    <button class="yk-tab" role="tab" id="tab-team" data-page="team" aria-selected="true">Team</button>
+    <button class="yk-tab" role="tab" id="tab-games" data-page="games" aria-selected="false">Games</button>
+    <button class="yk-tab" role="tab" id="tab-players" data-page="players" aria-selected="false">Players</button>
+  </nav>
+
+  <!-- TEAM -->
+  <section class="yk-page" id="team" role="tabpanel" aria-labelledby="tab-team">
+    <div class="yk-tiles" id="team-tiles">
+      <div class="yk-tile"><span class="yk-lab">Record</span>
+        <span class="yk-big"><span data-source="team" data-field="wins" data-row="0" class="dash-skeleton">—</span>–<span data-source="team" data-field="losses" data-row="0">—</span></span>
+        <span class="yk-sub"><span data-source="team" data-field="games" data-row="0">—</span> games played</span></div>
+      <div class="yk-tile"><span class="yk-lab">Points per game</span>
+        <span class="yk-big" data-source="team" data-field="ppg" data-row="0">—</span>
+        <span class="yk-sub">Opponents <span data-source="team" data-field="opp_ppg" data-row="0">—</span></span></div>
+      <div class="yk-tile"><span class="yk-lab">Average margin</span>
+        <span class="yk-big" data-source="team" data-field="margin" data-row="0">—</span>
+        <span class="yk-sub">Points per game</span></div>
+      <div class="yk-tile"><span class="yk-lab">Field goal %</span>
+        <span class="yk-big" data-source="team" data-field="fg_pct" data-row="0">—</span>
+        <span class="yk-sub">Opponents <span data-source="team" data-field="opp_fg_pct" data-row="0">—</span></span></div>
+      <div class="yk-tile"><span class="yk-lab">Free throw %</span>
+        <span class="yk-big" data-source="team" data-field="ft_pct" data-row="0">—</span>
+        <span class="yk-sub">Opponents <span data-source="team" data-field="opp_ft_pct" data-row="0">—</span></span></div>
+    </div>
+
+    <div class="yk-grid">
+      <div class="yk-card" id="four-factors">
+        <h2>Why we're winning: the four factors</h2>
+        <p class="yk-note">The four team stats that best explain wins, season to date. Green means the Young Knights have the edge.</p>
+        <div class="yk-factors" data-source="factors">
+          <div class="yk-factor" data-key="efg">
+            <div class="yk-f-head"><span class="yk-f-name">Shooting</span><span class="yk-chip"></span></div>
+            <span class="yk-note">Effective FG%: field goal % with made 3s counted as 1.5 makes.</span>
+            <div class="yk-bar-row"><span class="who">Young Knights</span><div class="yk-track"><div class="yk-fill" data-side="yk"></div></div><span class="val" data-source="factors" data-field="yk" data-where="key=efg">—</span></div>
+            <div class="yk-bar-row"><span class="who">Opponents</span><div class="yk-track"><div class="yk-fill" data-side="opp"></div></div><span class="val" data-source="factors" data-field="opp" data-where="key=efg">—</span></div>
+          </div>
+          <div class="yk-factor" data-key="tov">
+            <div class="yk-f-head"><span class="yk-f-name">Turnovers</span><span class="yk-chip"></span></div>
+            <span class="yk-note">Share of possessions that end in a turnover. Lower is better.</span>
+            <div class="yk-bar-row"><span class="who">Young Knights</span><div class="yk-track"><div class="yk-fill" data-side="yk"></div></div><span class="val" data-source="factors" data-field="yk" data-where="key=tov">—</span></div>
+            <div class="yk-bar-row"><span class="who">Opponents</span><div class="yk-track"><div class="yk-fill" data-side="opp"></div></div><span class="val" data-source="factors" data-field="opp" data-where="key=tov">—</span></div>
+          </div>
+          <div class="yk-factor" data-key="orb">
+            <div class="yk-f-head"><span class="yk-f-name">Offensive rebounding</span><span class="yk-chip"></span></div>
+            <span class="yk-note">Share of our missed shots we rebound ourselves.</span>
+            <div class="yk-bar-row"><span class="who">Young Knights</span><div class="yk-track"><div class="yk-fill" data-side="yk"></div></div><span class="val" data-source="factors" data-field="yk" data-where="key=orb">—</span></div>
+            <div class="yk-bar-row"><span class="who">Opponents</span><div class="yk-track"><div class="yk-fill" data-side="opp"></div></div><span class="val" data-source="factors" data-field="opp" data-where="key=orb">—</span></div>
+          </div>
+          <div class="yk-factor" data-key="ftr">
+            <div class="yk-f-head"><span class="yk-f-name">Free throws</span><span class="yk-chip"></span></div>
+            <span class="yk-note">Free throws made per field goal attempt.</span>
+            <div class="yk-bar-row"><span class="who">Young Knights</span><div class="yk-track"><div class="yk-fill" data-side="yk"></div></div><span class="val" data-source="factors" data-field="yk" data-where="key=ftr">—</span></div>
+            <div class="yk-bar-row"><span class="who">Opponents</span><div class="yk-track"><div class="yk-fill" data-side="opp"></div></div><span class="val" data-source="factors" data-field="opp" data-where="key=ftr">—</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="yk-card" id="per-game-compare">
+        <h2>Per game, us vs. opponents</h2>
+        <p class="yk-note">Season averages per game.</p>
+        <div class="yk-tablewrap">
+          <table>
+            <thead><tr><th class="l">Stat</th><th>Young Knights</th><th>Opponents</th></tr></thead>
+            <tbody>
+              <tr><td class="l">Points</td><td data-source="compare" data-field="yk" data-where="key=pts">—</td><td data-source="compare" data-field="opp" data-where="key=pts">—</td></tr>
+              <tr><td class="l">Rebounds</td><td data-source="compare" data-field="yk" data-where="key=reb">—</td><td data-source="compare" data-field="opp" data-where="key=reb">—</td></tr>
+              <tr><td class="l">Offensive rebounds</td><td data-source="compare" data-field="yk" data-where="key=orb">—</td><td data-source="compare" data-field="opp" data-where="key=orb">—</td></tr>
+              <tr><td class="l">Turnovers</td><td data-source="compare" data-field="yk" data-where="key=to">—</td><td data-source="compare" data-field="opp" data-where="key=to">—</td></tr>
+              <tr><td class="l">Fouls</td><td data-source="compare" data-field="yk" data-where="key=pf">—</td><td data-source="compare" data-field="opp" data-where="key=pf">—</td></tr>
+              <tr><td class="l">3-point %</td><td data-source="compare" data-field="yk" data-where="key=tp_pct">—</td><td data-source="compare" data-field="opp" data-where="key=tp_pct">—</td></tr>
+              <tr><td class="l">Free throw %</td><td data-source="compare" data-field="yk" data-where="key=ft_pct">—</td><td data-source="compare" data-field="opp" data-where="key=ft_pct">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GAMES -->
+  <section class="yk-page" id="games" role="tabpanel" aria-labelledby="tab-games" hidden>
+    <div class="yk-grid">
+      <div class="yk-card" id="points-by-game">
+        <div class="yk-cardhead"><h2>Points by game</h2><div class="yk-legend" data-legend="pts"></div></div>
+        <p class="yk-note">Our score against the opponent's, in the order played.</p>
+        <div class="yk-chart" data-source="games" data-chart="points"></div>
+      </div>
+      <div class="yk-card" id="shooting-by-game">
+        <div class="yk-cardhead"><h2>Field goal % by game</h2><div class="yk-legend" data-legend="fg"></div></div>
+        <p class="yk-note">Ours against what we allowed.</p>
+        <div class="yk-chart" data-source="games" data-chart="fg"></div>
+      </div>
+      <div class="yk-card" id="turnovers-by-game">
+        <div class="yk-cardhead"><h2>Turnovers by game</h2><div class="yk-legend" data-legend="to"></div></div>
+        <p class="yk-note">Turnovers we committed against turnovers we forced.</p>
+        <div class="yk-chart" data-source="games" data-chart="to"></div>
+      </div>
+    </div>
+
+    <div class="yk-card" id="game-list">
+      <h2>Results</h2>
+      <p class="yk-note">Tap a game to see its box score below.</p>
+      <div class="yk-tablewrap">
+        <table class="yk-rows" id="games-table" data-source="games" data-row-key="game">
+          <thead><tr>
+            <th data-field="game">#</th><th class="l" data-field="date">Date</th><th class="l" data-field="opponent">Opponent</th>
+            <th data-source="results" data-field="result">Result</th><th data-field="yk_pts">Us</th><th data-field="opp_pts">Them</th>
+            <th data-field="yk_reb">Reb</th><th data-field="opp_reb">Opp reb</th><th data-field="yk_to">TO</th><th data-field="opp_to">Opp TO</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="yk-card" id="box-score">
+      <div class="yk-cardhead"><h2 id="box-title">Box score</h2><span class="yk-note" id="box-sub"></span></div>
+      <div class="yk-tablewrap">
+        <table id="box-table" data-source="game_log" data-row-key="game,player">
+          <thead><tr>
+            <th class="l" data-field="player">Player</th><th data-field="pts">PTS</th><th data-field="fgm">FGM</th><th data-field="fga">FGA</th>
+            <th data-field="tpm">3PM</th><th data-field="tpa">3PA</th><th data-field="ftm">FTM</th><th data-field="fta">FTA</th>
+            <th data-field="orb">ORB</th><th data-field="drb">DRB</th><th data-field="reb">REB</th><th data-field="ast">AST</th>
+            <th data-field="stl">STL</th><th data-field="blk">BLK</th><th data-field="to">TO</th><th data-field="pf">PF</th><th data-field="plus_minus">+/-</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- PLAYERS -->
+  <section class="yk-page" id="players" role="tabpanel" aria-labelledby="tab-players" hidden>
+    <div class="yk-card" id="leaderboard">
+      <h2>Season stats</h2>
+      <p class="yk-note">Tap a column to sort, or a player to see their game-by-game numbers. Red marks a shooting % under 40% on 10 or more attempts.</p>
+      <div class="yk-tablewrap tall">
+        <table class="yk-rows" id="players-table" data-source="players" data-row-key="player">
+          <thead><tr>
+            <th data-field="jersey">#</th><th class="l" data-field="player">Player</th><th data-field="gp">GP</th>
+            <th data-field="ppg">PPG</th><th data-field="rpg">RPG</th><th data-field="apg">APG</th><th data-field="spg">SPG</th>
+            <th data-field="fg_pct">FG%</th><th data-field="tp_pct">3P%</th><th data-field="ft_pct">FT%</th><th data-field="ts_pct">TS%</th>
+            <th data-field="ast_to">AST/TO</th><th data-field="plus_minus">+/-</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="yk-grid">
+      <div class="yk-card" id="volume-efficiency">
+        <h2>Shot volume vs. efficiency</h2>
+        <p class="yk-note">Shots per game across, true shooting % up (scoring per shot, with 3s and free throws counted). Dashed line is the team rate. Players with 10+ shots.</p>
+        <div class="yk-chart" data-source="players team" data-chart="scatter"></div>
+      </div>
+      <div class="yk-card" id="player-card">
+        <div class="yk-cardhead"><h2>Player by game</h2>
+          <select class="yk-select" id="player-pick" aria-label="Player" data-source="players"></select></div>
+        <div class="yk-statline" id="player-line"></div>
+        <div class="yk-chart" data-source="game_log games" data-chart="player"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+dash.calc('players', {
+  inputs: ['game_log'],
+  title: 'Player season stats',
+  description: 'Each player’s season totals and per-game averages, added up from the game log. Team (unassigned) stats are left out.',
+  fn: (game_log) => {
+    const keys = ['pts', 'fgm', 'fga', 'tpm', 'tpa', 'ftm', 'fta', 'orb', 'reb', 'ast', 'stl', 'blk', 'to', 'pf', 'plus_minus'];
+    const by = {};
+    for (const r of game_log) {
+      if (r.player === 'Unassigned') continue;
+      if (!by[r.player]) { by[r.player] = { player: r.player, jersey: r.jersey, gp: 0 }; keys.forEach((k) => { by[r.player][k] = 0; }); }
+      const p = by[r.player];
+      p.gp += 1;
+      keys.forEach((k) => { p[k] += Number(r[k]); });
+    }
+    const ratio = (a, b) => (b ? a / b : null);
+    return Object.values(by).map((p) => Object.assign(p, {
+      ppg: p.pts / p.gp, rpg: p.reb / p.gp, apg: p.ast / p.gp, spg: p.stl / p.gp, fga_g: p.fga / p.gp,
+      fg_pct: ratio(p.fgm, p.fga), tp_pct: ratio(p.tpm, p.tpa), ft_pct: ratio(p.ftm, p.fta),
+      ts_pct: ratio(p.pts, 2 * (p.fga + 0.44 * p.fta)), ast_to: ratio(p.ast, p.to),
+    }));
+  },
+});
+
+dash.calc('team', {
+  inputs: ['games'],
+  title: 'Season record and averages',
+  description: 'Wins, losses and per-game team averages for the season so far.',
+  fn: (games) => {
+    const s = (k) => games.reduce((t, g) => t + Number(g[k]), 0);
+    const n = games.length;
+    const wins = games.filter((g) => Number(g.yk_pts) > Number(g.opp_pts)).length;
+    return [{
+      games: n, wins, losses: n - wins,
+      ppg: s('yk_pts') / n, opp_ppg: s('opp_pts') / n, margin: (s('yk_pts') - s('opp_pts')) / n,
+      fg_pct: s('yk_fgm') / s('yk_fga'), opp_fg_pct: s('opp_fgm') / s('opp_fga'),
+      ft_pct: s('yk_ftm') / s('yk_fta'), opp_ft_pct: s('opp_ftm') / s('opp_fta'),
+      ts_pct: s('yk_pts') / (2 * (s('yk_fga') + 0.44 * s('yk_fta'))),
+    }];
+  },
+});
+
+dash.calc('factors', {
+  inputs: ['games'],
+  title: 'Four factors',
+  description: 'Shooting, turnover, offensive rebounding and free throw rates for us and our opponents. Possessions = FGA − ORB + TO + 0.44 × FTA.',
+  fn: (games) => {
+    const s = (k) => games.reduce((t, g) => t + Number(g[k]), 0);
+    const side = (a, b) => {
+      const poss = s(a + '_fga') - s(a + '_orb') + s(a + '_to') + 0.44 * s(a + '_fta');
+      return {
+        efg: (s(a + '_fgm') + 0.5 * s(a + '_tpm')) / s(a + '_fga'),
+        tov: s(a + '_to') / poss,
+        orb: s(a + '_orb') / (s(a + '_orb') + s(b + '_drb')),
+        ftr: s(a + '_ftm') / s(a + '_fga'),
+      };
+    };
+    const yk = side('yk', 'opp');
+    const opp = side('opp', 'yk');
+    return [
+      { key: 'efg', factor: 'Shooting', yk: yk.efg, opp: opp.efg, higher_is_better: true },
+      { key: 'tov', factor: 'Turnovers', yk: yk.tov, opp: opp.tov, higher_is_better: false },
+      { key: 'orb', factor: 'Offensive rebounding', yk: yk.orb, opp: opp.orb, higher_is_better: true },
+      { key: 'ftr', factor: 'Free throws', yk: yk.ftr, opp: opp.ftr, higher_is_better: true },
+    ];
+  },
+});
+
+dash.calc('compare', {
+  inputs: ['games'],
+  title: 'Per-game comparison',
+  description: 'Our per-game averages beside our opponents’, plus 3-point and free throw percentages for the season.',
+  fn: (games) => {
+    const s = (k) => games.reduce((t, g) => t + Number(g[k]), 0);
+    const n = games.length;
+    const avg = (k) => ({ yk: s('yk_' + k) / n, opp: s('opp_' + k) / n });
+    return [
+      Object.assign({ key: 'pts', stat: 'Points' }, avg('pts')),
+      Object.assign({ key: 'reb', stat: 'Rebounds' }, avg('reb')),
+      Object.assign({ key: 'orb', stat: 'Offensive rebounds' }, avg('orb')),
+      Object.assign({ key: 'to', stat: 'Turnovers' }, avg('to')),
+      Object.assign({ key: 'pf', stat: 'Fouls' }, avg('pf')),
+      { key: 'tp_pct', stat: '3-point %', yk: s('yk_tpm') / s('yk_tpa'), opp: s('opp_tpm') / s('opp_tpa') },
+      { key: 'ft_pct', stat: 'Free throw %', yk: s('yk_ftm') / s('yk_fta'), opp: s('opp_ftm') / s('opp_fta') },
+    ];
+  },
+});
+
+dash.calc('results', {
+  inputs: ['games'],
+  title: 'Game results',
+  description: 'Win or loss and point margin for each game.',
+  fn: (games) => games.map((g) => {
+    const margin = Number(g.yk_pts) - Number(g.opp_pts);
+    return { game: g.game, result: margin > 0 ? 'W' : margin < 0 ? 'L' : 'T', margin };
+  }),
+});
+</script>
+
+<script>
+(() => {
+  const root = document.querySelector('.yk');
+  const pct = d3.format('.1%');
+  const one = d3.format('.1f');
+  const two = d3.format('.2f');
+  const signed = (v) => (v > 0 ? '+' : '') + one(v);
+  const signedInt = (v) => (v > 0 ? '+' : '') + d3.format('d')(v);
+  const md = d3.utcFormat('%-m/%-d');
+  const toDate = (s) => new Date(String(s).slice(0, 10) + 'T00:00:00Z');
+  const num = (v) => (v === '' || v == null ? null : Number(v));
+  const C_YK = () => dash.colors[0];
+  const C_OPP = 'var(--cds-chart-muted)';
+  const NS = 'http://www.w3.org/2000/svg';
+
+  const get = (id) => dash.data(id);
+  const ok = (...ids) => ids.every((id) => get(id).status === 'ok');
+  const failed = (...ids) => ids.some((id) => ['error', 'connect', 'declined', 'missing'].includes(get(id).status));
+  const unskeleton = (el) => el.classList.remove('dash-skeleton');
+
+  function setText(sel, text) {
+    root.querySelectorAll('#team ' + sel).forEach((el) => { el.textContent = text; unskeleton(el); });
+  }
+  function showFail(el) {
+    el.replaceChildren();
+    const f = document.createElement('div');
+    f.className = 'yk-fail';
+    f.textContent = 'Failed to load';
+    el.appendChild(f);
+  }
+
+  // ---------- legends ----------
+  function legend(name, items) {
+    const el = root.querySelector(`[data-legend="${name}"]`);
+    el.replaceChildren(...items.map(([label, color]) => {
+      const s = document.createElement('span');
+      const sw = document.createElement('i');
+      sw.className = 'yk-sw';
+      sw.style.background = color;
+      s.append(sw, document.createTextNode(label));
+      return s;
+    }));
+  }
+
+  // ---------- tooltip ----------
+  function tipper(box) {
+    let t = box.querySelector('.yk-tip');
+    if (!t) { t = document.createElement('div'); t.className = 'yk-tip'; t.hidden = true; box.appendChild(t); }
+    return {
+      show(ev, title, lines) {
+        const h = document.createElement('div');
+        h.className = 'yk-tip-h';
+        h.textContent = title;
+        const rows = lines.map(([color, name, val]) => {
+          const r = document.createElement('div');
+          r.className = 'yk-tip-r';
+          if (color) { const sw = document.createElement('span'); sw.className = 'yk-sw'; sw.style.background = color; r.appendChild(sw); }
+          const n = document.createElement('span'); n.textContent = name;
+          const v = document.createElement('b'); v.textContent = val;
+          r.append(n, v);
+          return r;
+        });
+        t.replaceChildren(h, ...rows);
+        t.hidden = false;
+        const b = box.getBoundingClientRect();
+        const w = t.offsetWidth;
+        let x = ev.clientX - b.left + 12;
+        if (x + w > b.width) x = Math.max(0, ev.clientX - b.left - w - 12);
+        t.style.left = x + 'px';
+        t.style.top = Math.max(0, ev.clientY - b.top - t.offsetHeight - 8) + 'px';
+      },
+      hide() { t.hidden = true; },
+    };
+  }
+
+  function frame(el, H, m) {
+    el.querySelector('svg')?.remove();
+    const W = Math.max(280, el.clientWidth);
+    const svg = d3.select(el).insert('svg', ':first-child')
+      .attr('width', '100%').attr('height', H).attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img');
+    return { svg, W, H, m };
+  }
+  function yGrid(svg, y, x0, x1, fmt, ticks = 5) {
+    const g = svg.append('g');
+    y.ticks(ticks).forEach((t) => {
+      g.append('line').attr('x1', x0).attr('x2', x1).attr('y1', y(t)).attr('y2', y(t))
+        .style('stroke', 'var(--cds-chart-grid)').style('stroke-width', 1);
+      g.append('text').attr('x', x0 - 6).attr('y', y(t)).attr('dy', '0.32em').attr('text-anchor', 'end').text(fmt(t));
+    });
+  }
+  function measure(svg, texts) {
+    const t = svg.append('text').style('visibility', 'hidden');
+    let w = 0;
+    texts.forEach((s) => { t.text(s); w = Math.max(w, t.node().getComputedTextLength()); });
+    t.remove();
+    return w;
+  }
+
+  // ---------- Games charts ----------
+  function gamesRows() {
+    return get('games').data.map((g) => ({ ...g, n: Number(g.game), d: toDate(g.date) })).sort((a, b) => a.n - b.n);
+  }
+
+  function drawPoints(el) {
+    const games = gamesRows();
+    const { svg, W, H } = frame(el, 240);
+    const max = d3.max(games, (g) => Math.max(+g.yk_pts, +g.opp_pts));
+    const y = d3.scaleLinear([0, Math.ceil(max / 10) * 10], [H - 26, 14]);
+    const l = 10 + measure(svg, y.ticks(5).map(String));
+    const x = d3.scaleBand(games.map((g) => g.n), [l, W - 4]).paddingInner(0.3).paddingOuter(0.1);
+    const x1 = d3.scaleBand(['yk', 'opp'], [0, x.bandwidth()]).padding(0.1);
+    yGrid(svg, y, l, W - 4, String);
+    const tip = tipper(el);
+    const g = svg.append('g').selectAll('g').data(games).join('g').attr('transform', (d) => `translate(${x(d.n)},0)`);
+    g.selectAll('rect').data((d) => [['yk', +d.yk_pts, d], ['opp', +d.opp_pts, d]]).join('rect')
+      .attr('x', (d) => x1(d[0])).attr('width', x1.bandwidth()).attr('y', (d) => y(d[1]))
+      .attr('height', (d) => y(0) - y(d[1])).attr('rx', 3)
+      .style('fill', (d) => (d[0] === 'yk' ? C_YK() : C_OPP));
+    g.append('rect').attr('x', 0).attr('width', x.bandwidth()).attr('y', 14).attr('height', H - 40)
+      .style('fill', 'transparent')
+      .on('mousemove', (ev, d) => tip.show(ev, `${md(d.d)} vs ${d.opponent}`, [[C_YK(), 'Young Knights', d.yk_pts], [C_OPP, 'Opponent', d.opp_pts], [null, 'Margin', signedInt(d.yk_pts - d.opp_pts)]]))
+      .on('mouseleave', () => tip.hide());
+    const step = x.bandwidth() < 26 ? 2 : 1;
+    svg.append('g').selectAll('text').data(games.filter((d, i) => i % step === 0)).join('text')
+      .attr('x', (d) => x(d.n) + x.bandwidth() / 2).attr('y', H - 8).attr('text-anchor', 'middle').text((d) => md(d.d));
+  }
+
+  function drawLines(el, series, fmt, domain) {
+    const games = gamesRows();
+    const { svg, W, H } = frame(el, 240);
+    const vals = games.flatMap((g) => series.map((s) => s.value(g)));
+    const y = d3.scaleLinear(domain || [0, d3.max(vals)], [H - 26, 14]).nice();
+    const l = 10 + measure(svg, y.ticks(5).map(fmt));
+    const x = d3.scalePoint(games.map((g) => g.n), [l + 8, W - 12]);
+    yGrid(svg, y, l, W - 4, fmt);
+    series.forEach((s) => {
+      svg.append('path').datum(games)
+        .attr('d', d3.line().x((g) => x(g.n)).y((g) => y(s.value(g))))
+        .style('fill', 'none').style('stroke', s.color).style('stroke-width', 2)
+        .style('stroke-linecap', 'round').style('stroke-linejoin', 'round');
+      svg.append('g').selectAll('circle').data(games).join('circle')
+        .attr('cx', (g) => x(g.n)).attr('cy', (g) => y(s.value(g))).attr('r', 3).style('fill', s.color);
+    });
+    const tip = tipper(el);
+    const rule = svg.append('line').attr('y1', 14).attr('y2', H - 26).style('stroke', 'var(--cds-chart-reference)').style('stroke-width', 1).style('opacity', 0);
+    const step = (W - l) / games.length;
+    svg.append('g').selectAll('rect').data(games).join('rect')
+      .attr('x', (g) => x(g.n) - step / 2).attr('width', step).attr('y', 14).attr('height', H - 40).style('fill', 'transparent')
+      .on('mousemove', (ev, g) => {
+        rule.attr('x1', x(g.n)).attr('x2', x(g.n)).style('opacity', 1);
+        tip.show(ev, `${md(g.d)} vs ${g.opponent}`, series.map((s) => [s.color, s.name, fmt(s.value(g))]));
+      })
+      .on('mouseleave', () => { rule.style('opacity', 0); tip.hide(); });
+    const every = step < 30 ? 2 : 1;
+    svg.append('g').selectAll('text').data(games.filter((d, i) => i % every === 0)).join('text')
+      .attr('x', (g) => x(g.n)).attr('y', H - 8).attr('text-anchor', 'middle').text((g) => md(g.d));
+  }
+
+  // ---------- Games table + box score ----------
+  function selectedGame() {
+    const games = gamesRows();
+    const p = dash.params().game;
+    const hit = games.find((g) => g.n === Number(p));
+    return hit || games[games.length - 1];
+  }
+
+  function drawGamesTable() {
+    const tbody = root.querySelector('#games-table tbody');
+    const games = gamesRows();
+    const res = ok('results') ? new Map(get('results').data.map((r) => [String(r.game), r])) : new Map();
+    const sel = selectedGame();
+    tbody.replaceChildren(...games.map((g) => {
+      const tr = document.createElement('tr');
+      tr.dataset.key = g.game;
+      tr.tabIndex = 0;
+      if (sel && g.n === sel.n) tr.classList.add('sel');
+      const r = res.get(String(g.game));
+      const cells = [[g.game], [md(g.d), 'l'], [g.opponent, 'l name'], [r ? r.result : '', r ? (r.result === 'W' ? 'w' : 'lo') : ''],
+        [g.yk_pts], [g.opp_pts], [g.yk_reb], [g.opp_reb], [g.yk_to], [g.opp_to]];
+      tr.append(...cells.map(([v, cls]) => { const td = document.createElement('td'); td.textContent = v; if (cls) td.className = cls; return td; }));
+      return tr;
+    }));
+  }
+
+  function drawBox() {
+    const g = selectedGame();
+    const tbody = root.querySelector('#box-table tbody');
+    if (!g) { tbody.replaceChildren(); return; }
+    root.querySelector('#box-title').textContent = `Box score: ${md(g.d)} vs ${g.opponent}`;
+    const margin = g.yk_pts - g.opp_pts;
+    root.querySelector('#box-sub').textContent = `${margin > 0 ? 'W' : 'L'} ${g.yk_pts}–${g.opp_pts}`;
+    const rows = get('game_log').data.filter((r) => String(r.game) === String(g.game))
+      .sort((a, b) => (a.player === 'Unassigned') - (b.player === 'Unassigned') || b.pts - a.pts);
+    const cols = ['pts', 'fgm', 'fga', 'tpm', 'tpa', 'ftm', 'fta', 'orb', 'drb', 'reb', 'ast', 'stl', 'blk', 'to', 'pf', 'plus_minus'];
+    tbody.replaceChildren(...rows.map((r) => {
+      const tr = document.createElement('tr');
+      tr.dataset.key = `${encodeURIComponent(r.game)},${encodeURIComponent(r.player)}`;
+      const name = document.createElement('td');
+      name.className = 'l name';
+      name.textContent = r.player;
+      tr.append(name, ...cols.map((c) => { const td = document.createElement('td'); td.textContent = r[c]; return td; }));
+      return tr;
+    }));
+  }
+
+  root.querySelector('#games-table').addEventListener('click', (ev) => {
+    const tr = ev.target.closest('tr[data-key]');
+    if (tr) dash.setParams({ game: Number(tr.dataset.key) });
+  });
+  root.querySelector('#games-table').addEventListener('keydown', (ev) => {
+    const tr = ev.target.closest('tr[data-key]');
+    if (tr && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); dash.setParams({ game: Number(tr.dataset.key) }); }
+  });
+
+  // ---------- Players ----------
+  const colFmt = {
+    jersey: (v) => v ?? '', player: (v) => v, gp: (v) => v, ppg: one, rpg: one, apg: one, spg: one,
+    fg_pct: (v) => (v == null ? '–' : pct(v)), tp_pct: (v) => (v == null ? '–' : pct(v)), ft_pct: (v) => (v == null ? '–' : pct(v)),
+    ts_pct: (v) => (v == null ? '–' : pct(v)), ast_to: (v) => (v == null ? '–' : two(v)), plus_minus: (v) => signedInt(v),
+  };
+  const attempts = { fg_pct: 'fga', tp_pct: 'tpa', ft_pct: 'fta' };
+  let sortKey = 'ppg';
+  let sortDir = -1;
+
+  function playersRows() { return get('players').data.slice(); }
+  function selectedPlayer() {
+    const ps = playersRows().sort((a, b) => b.pts - a.pts);
+    const p = dash.params().player;
+    return ps.find((x) => x.player === p) || ps[0];
+  }
+
+  function setupPlayerHeaders() {
+    root.querySelectorAll('#players-table th').forEach((th) => {
+      if (th.querySelector('.yk-sort')) return;
+      const b = document.createElement('button');
+      b.className = 'yk-sort';
+      b.type = 'button';
+      b.textContent = th.textContent;
+      th.replaceChildren(b);
+      b.addEventListener('click', () => {
+        const k = th.dataset.field;
+        if (sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = k === 'player' ? 1 : -1; }
+        drawPlayersTable();
+      });
+    });
+  }
+
+  function drawPlayersTable() {
+    setupPlayerHeaders();
+    root.querySelectorAll('#players-table th').forEach((th) => {
+      if (th.dataset.field === sortKey) th.setAttribute('aria-sort', sortDir > 0 ? 'ascending' : 'descending');
+      else th.removeAttribute('aria-sort');
+    });
+    const rows = playersRows().sort((a, b) => {
+      const va = a[sortKey], vb = b[sortKey];
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      if (sortKey === 'player' || sortKey === 'jersey') return String(va).localeCompare(String(vb), 'en', { numeric: true }) * sortDir;
+      return (va - vb) * sortDir;
+    });
+    const sel = selectedPlayer();
+    const fields = [...root.querySelectorAll('#players-table th')].map((th) => th.dataset.field);
+    root.querySelector('#players-table tbody').replaceChildren(...rows.map((r) => {
+      const tr = document.createElement('tr');
+      tr.dataset.key = r.player;
+      tr.tabIndex = 0;
+      if (sel && sel.player === r.player) tr.classList.add('sel');
+      tr.append(...fields.map((f) => {
+        const td = document.createElement('td');
+        td.textContent = colFmt[f](r[f]);
+        if (f === 'player') td.className = 'l name';
+        if (attempts[f] && r[attempts[f]] >= 10 && r[f] < 0.4) td.classList.add('weak');
+        return td;
+      }));
+      return tr;
+    }));
+  }
+
+  const pickPlayer = (name) => dash.setParams({ player: name });
+  root.querySelector('#players-table').addEventListener('click', (ev) => {
+    const tr = ev.target.closest('tbody tr[data-key]');
+    if (tr) pickPlayer(tr.dataset.key);
+  });
+  root.querySelector('#players-table').addEventListener('keydown', (ev) => {
+    const tr = ev.target.closest('tbody tr[data-key]');
+    if (tr && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); pickPlayer(tr.dataset.key); }
+  });
+  const picker = root.querySelector('#player-pick');
+  picker.addEventListener('change', () => pickPlayer(picker.value));
+
+  function drawScatter(el) {
+    const ps = playersRows().filter((p) => p.fga >= 10);
+    const teamTs = get('team').data[0].ts_pct;
+    const { svg, W, H } = frame(el, 260);
+    const y = d3.scaleLinear([Math.min(0.3, d3.min(ps, (p) => p.ts_pct) - 0.03), Math.max(0.7, d3.max(ps, (p) => p.ts_pct) + 0.03)], [H - 30, 14]).nice();
+    const l = 10 + measure(svg, y.ticks(5).map(d3.format('.0%')));
+    const x = d3.scaleLinear([0, d3.max(ps, (p) => p.fga_g) * 1.1], [l + 4, W - 50]).nice();
+    yGrid(svg, y, l, W - 4, d3.format('.0%'));
+    x.ticks(5).forEach((t) => {
+      svg.append('text').attr('x', x(t)).attr('y', H - 12).attr('text-anchor', 'middle').text(t);
+    });
+
+    svg.append('line').attr('x1', l).attr('x2', W - 4).attr('y1', y(teamTs)).attr('y2', y(teamTs))
+      .style('stroke', 'var(--cds-chart-reference)').style('stroke-dasharray', '4 4').style('stroke-width', 1);
+    svg.append('text').attr('x', W - 4).attr('y', y(teamTs) - 5).attr('text-anchor', 'end').text(`Team ${pct(teamTs)}`);
+    const sel = selectedPlayer();
+    const tip = tipper(el);
+    const g = svg.append('g').selectAll('g').data(ps).join('g').attr('transform', (p) => `translate(${x(p.fga_g)},${y(p.ts_pct)})`);
+    g.append('circle').attr('r', (p) => (sel && p.player === sel.player ? 7 : 5))
+      .style('fill', (p) => (sel && p.player === sel.player ? C_YK() : 'var(--cds-chart-muted)'))
+      .style('stroke', 'var(--color-panel)').style('stroke-width', 1.5).style('cursor', 'pointer')
+      .on('mousemove', (ev, p) => tip.show(ev, p.player, [[null, 'Shots per game', one(p.fga_g)], [null, 'True shooting', pct(p.ts_pct)], [null, 'Points per game', one(p.ppg)]]))
+      .on('mouseleave', () => tip.hide())
+      .on('click', (ev, p) => pickPlayer(p.player));
+    const placed = [];
+    g.append('text').attr('dy', '0.32em').attr('class', (p) => (sel && p.player === sel.player ? 'yk-strong' : null)).text((p) => p.player)
+      .each(function (p) {
+        const t = d3.select(this);
+        const w = this.getComputedTextLength();
+        const px = x(p.fga_g), py = y(p.ts_pct);
+        const hits = (x0) => placed.some((b) => Math.abs(b.y - py) < 13 && x0 < b.x1 && x0 + w > b.x0);
+        let x0 = px + 9;
+        if (hits(x0) || x0 + w > W) { x0 = px - 9 - w; t.attr('text-anchor', 'end').attr('x', -9); } else t.attr('x', 9);
+        let dy = 0;
+        if (hits(x0)) { dy = 13; t.attr('y', dy); }
+        placed.push({ x0, x1: x0 + w, y: py + dy });
+      });
+  }
+
+  function drawPlayerCard(el) {
+    const p = selectedPlayer();
+    if (!p) return;
+    picker.replaceChildren(...playersRows().sort((a, b) => b.pts - a.pts).map((r) => new Option(`${r.player} (#${r.jersey})`, r.player)));
+    picker.value = p.player;
+    const where = `player=${encodeURIComponent(p.player)}`;
+    const stats = [['ppg', 'PPG', one], ['rpg', 'RPG', one], ['apg', 'APG', one], ['fg_pct', 'FG%', (v) => (v == null ? '–' : pct(v))], ['ft_pct', 'FT%', (v) => (v == null ? '–' : pct(v))], ['plus_minus', '+/-', signedInt]];
+    root.querySelector('#player-line').replaceChildren(...stats.map(([f, label, fmt]) => {
+      const d = document.createElement('div'); d.className = 'yk-stat';
+      const l = document.createElement('span'); l.className = 'yk-lab'; l.textContent = label;
+      const v = document.createElement('span'); v.className = 'yk-big';
+      v.dataset.source = 'players'; v.dataset.field = f; v.dataset.where = where;
+      v.textContent = fmt(p[f]);
+      d.append(l, v);
+      return d;
+    }));
+    const games = gamesRows();
+    const log = new Map(get('game_log').data.filter((r) => r.player === p.player).map((r) => [Number(r.game), r]));
+    const { svg, W, H } = frame(el, 220);
+    const max = d3.max([...log.values()], (r) => +r.pts) || 10;
+    const y = d3.scaleLinear([0, Math.max(10, Math.ceil(max / 5) * 5)], [H - 26, 16]);
+    const l = 10 + measure(svg, y.ticks(4).map(String));
+    const x = d3.scaleBand(games.map((g) => g.n), [l, W - 4]).paddingInner(0.3).paddingOuter(0.1);
+    yGrid(svg, y, l, W - 4, String, 4);
+    const tip = tipper(el);
+    const bw = Math.min(32, x.bandwidth());
+    const g = svg.append('g').selectAll('g').data(games).join('g').attr('transform', (d) => `translate(${x(d.n) + (x.bandwidth() - bw) / 2},0)`);
+    g.each(function (d) {
+      const r = log.get(d.n);
+      const sel = d3.select(this);
+      if (!r) {
+        sel.append('text').attr('x', bw / 2).attr('y', y(0) - 4).attr('text-anchor', 'middle').text('DNP');
+        return;
+      }
+      sel.append('rect').attr('width', bw).attr('y', y(+r.pts)).attr('height', Math.max(1, y(0) - y(+r.pts))).attr('rx', 3).style('fill', C_YK());
+      sel.append('text').attr('x', bw / 2).attr('y', y(+r.pts) - 4).attr('text-anchor', 'middle').attr('class', 'yk-strong').text(r.pts);
+      sel.append('rect').attr('width', bw).attr('y', 16).attr('height', H - 42).style('fill', 'transparent')
+        .on('mousemove', (ev) => tip.show(ev, `${md(d.d)} vs ${d.opponent}`, [[null, 'Points', r.pts], [null, 'FG', `${r.fgm}-${r.fga}`], [null, 'FT', `${r.ftm}-${r.fta}`], [null, 'Rebounds', r.reb], [null, 'Assists', r.ast], [null, '+/-', signedInt(+r.plus_minus)]]))
+        .on('mouseleave', () => tip.hide());
+    });
+    const step = x.bandwidth() < 26 ? 2 : 1;
+    svg.append('g').selectAll('text.d').data(games.filter((d, i) => i % step === 0)).join('text')
+      .attr('x', (d) => x(d.n) + x.bandwidth() / 2).attr('y', H - 8).attr('text-anchor', 'middle').text((d) => md(d.d));
+  }
+
+  // ---------- Team ----------
+  function drawTeam() {
+    if (ok('team')) {
+      const t = get('team').data[0];
+      setText('[data-source="team"][data-field="wins"]', t.wins);
+      setText('[data-source="team"][data-field="losses"]', t.losses);
+      setText('[data-source="team"][data-field="games"]', t.games);
+      setText('[data-source="team"][data-field="ppg"]', one(t.ppg));
+      setText('[data-source="team"][data-field="opp_ppg"]', one(t.opp_ppg));
+      setText('[data-source="team"][data-field="margin"]', signed(t.margin));
+      ['fg_pct', 'opp_fg_pct', 'ft_pct', 'opp_ft_pct'].forEach((f) => setText(`[data-source="team"][data-field="${f}"]`, pct(t[f])));
+    }
+    if (ok('factors')) {
+      get('factors').data.forEach((f) => {
+        const box = root.querySelector(`.yk-factor[data-key="${f.key}"]`);
+        const max = Math.max(f.yk, f.opp) * 1.15;
+        box.querySelector('[data-side="yk"]').style.cssText = `width:${(f.yk / max) * 100}%;background:${C_YK()}`;
+        box.querySelector('[data-side="opp"]').style.cssText = `width:${(f.opp / max) * 100}%;background:${C_OPP}`;
+        box.querySelector('[data-field="yk"]').textContent = pct(f.yk);
+        box.querySelector('[data-field="opp"]').textContent = pct(f.opp);
+        const ahead = f.higher_is_better ? f.yk > f.opp : f.yk < f.opp;
+        const chip = box.querySelector('.yk-chip');
+        chip.textContent = ahead ? 'Our edge' : 'Their edge';
+        chip.className = 'yk-chip ' + (ahead ? 'ok' : 'bad');
+      });
+    }
+    if (ok('compare')) {
+      get('compare').data.forEach((r) => {
+        const f = r.key.endsWith('_pct') ? pct : one;
+        setText(`[data-source="compare"][data-field="yk"][data-where="key=${r.key}"]`, f(r.yk));
+        setText(`[data-source="compare"][data-field="opp"][data-where="key=${r.key}"]`, f(r.opp));
+      });
+    }
+  }
+
+  function drawTakeaway() {
+    const el = root.querySelector('#takeaway');
+    if (!ok('team', 'factors')) { if (failed('games')) el.textContent = 'Season data failed to load.'; return; }
+    const t = get('team').data[0];
+    const fs = get('factors').data;
+    const edge = (f) => (f.higher_is_better ? f.yk - f.opp : f.opp - f.yk);
+    const best = fs.slice().sort((a, b) => edge(b) - edge(a))[0];
+    const mk = (src, field, extra, text) => {
+      const b = document.createElement('b');
+      b.dataset.source = src; b.dataset.field = field;
+      if (extra) b.dataset.where = extra; else b.dataset.row = '0';
+      b.textContent = text;
+      return b;
+    };
+    const tx = (s) => document.createTextNode(s);
+    const parts = [mk('team', 'wins', null, t.wins), tx('–'), mk('team', 'losses', null, t.losses),
+      tx(' through '), mk('team', 'games', null, t.games), tx(' games, outscoring opponents by '), mk('team', 'margin', null, one(t.margin)),
+      tx(' points a game. Biggest edge: ' + best.factor.toLowerCase() + ' ('), mk('factors', 'yk', `key=${best.key}`, pct(best.yk)),
+      tx(' vs '), mk('factors', 'opp', `key=${best.key}`, pct(best.opp)), tx(').')];
+    if (t.ft_pct < 0.65) parts.push(tx(' Biggest concern: free throws at '), mk('team', 'ft_pct', null, pct(t.ft_pct)), tx('.'));
+    el.replaceChildren(...parts);
+  }
+
+  // ---------- tabs ----------
+  const pages = ['team', 'games', 'players'];
+  let current = 'team';
+  function show(page, link = true) {
+    if (!pages.includes(page)) return;
+    current = page;
+    pages.forEach((p) => {
+      root.querySelector('#' + p).hidden = p !== page;
+      root.querySelector('#tab-' + p).setAttribute('aria-selected', String(p === page));
+    });
+    if (link) dash.setLink(page);
+    draw();
+  }
+  root.querySelectorAll('.yk-tab').forEach((b) => b.addEventListener('click', () => show(b.dataset.page)));
+
+  // ---------- main draw ----------
+  function chartEl(name) { return root.querySelector(`[data-chart="${name}"]`); }
+  function draw() {
+    drawTakeaway();
+    if (current === 'team') drawTeam();
+    if (current === 'games') {
+      legend('pts', [['Young Knights', C_YK()], ['Opponent', C_OPP]]);
+      legend('fg', [['Young Knights', C_YK()], ['Opponent', C_OPP]]);
+      legend('to', [['Committed', 'var(--cds-chart-status-critical)'], ['Forced', C_YK()]]);
+      if (ok('games')) {
+        drawPoints(chartEl('points'));
+        drawLines(chartEl('fg'), [
+          { name: 'Young Knights', color: C_YK(), value: (g) => g.yk_fgm / g.yk_fga },
+          { name: 'Opponent', color: C_OPP, value: (g) => g.opp_fgm / g.opp_fga },
+        ], d3.format('.0%'), [0.2, 0.7]);
+        drawLines(chartEl('to'), [
+          { name: 'Committed', color: 'var(--cds-chart-status-critical)', value: (g) => +g.yk_to },
+          { name: 'Forced', color: C_YK(), value: (g) => +g.opp_to },
+        ], String);
+        drawGamesTable();
+        if (ok('game_log')) drawBox();
+      } else if (failed('games')) ['points', 'fg', 'to'].forEach((n) => showFail(chartEl(n)));
+    }
+    if (current === 'players') {
+      if (ok('players', 'games', 'game_log', 'team')) {
+        drawPlayersTable();
+        drawScatter(chartEl('scatter'));
+        drawPlayerCard(chartEl('player'));
+      } else if (failed('game_log', 'games')) ['scatter', 'player'].forEach((n) => showFail(chartEl(n)));
+    }
+  }
+
+  dash.onData(draw);
+  const named = location.hash.slice(1);
+  if (pages.includes(named)) show(named, false);
+})();
+</script>
+
+<p class="yk-foot" id="yk-foot"></p>
+</div>
+<script>
+dash.onData(() => {
+  const g = dash.data('games');
+  const el = document.getElementById('yk-foot');
+  if (g.status !== 'ok' || !g.data.length) return;
+  const last = g.data.map((r) => r.date).sort().pop();
+  const d = new Date(last + 'T00:00:00Z');
+  el.textContent = `Stats from GameChanger box scores, through ${d.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'long', day: 'numeric', year: 'numeric' })} (${g.data.length} games).`;
+});
+</script>
+</body>
+</html>
