@@ -69,7 +69,8 @@
   .yk-big { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); line-height: 1.1; font-variant-numeric: tabular-nums; }
   .yk-sub { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
   .yk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: var(--cds-gap-md); }
-  .yk-card { display: grid; gap: var(--cds-gap-sm); align-content: start; }
+  .yk-card { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--cds-gap-sm); align-content: start; }
+  .yk-boxgrid > * { min-width: 0; }
   .yk-card h2 { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); }
   .yk-note { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
   .yk-cardhead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: var(--cds-gap-sm); }
@@ -112,10 +113,14 @@
   .yk td.w { color: var(--color-ok); font-weight: var(--cds-font-weight-medium); }
   .yk td.lo { color: var(--color-bad); font-weight: var(--cds-font-weight-medium); }
   .yk td.weak { color: var(--color-bad); }
-  .yk-select { font: inherit; padding: var(--cds-pad-xs) var(--cds-pad-sm); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-bg); color: var(--color-fg); }
+  .yk-select { max-width: 100%; min-width: 0; font: inherit; padding: var(--cds-pad-xs) var(--cds-pad-sm); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-bg); color: var(--color-fg); }
   .yk-statline { display: flex; flex-wrap: wrap; gap: var(--cds-gap-md); }
   .yk-stat { display: grid; gap: 2px; }
   .yk-stat .yk-big { font-size: var(--cds-font-size-heading); font-family: var(--font-anthropic-serif); }
+  .yk-boxgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: var(--cds-gap-lg); }
+  .yk-sub-h { font-size: var(--cds-font-size-body); font-weight: var(--cds-font-weight-medium); margin: var(--cds-gap-sm) 0 var(--cds-gap-xs); }
+  .yk table.yk-compare td:first-child, .yk table.yk-compare th:first-child { text-align: left; }
+  .yk tr.yk-total td { font-weight: var(--cds-font-weight-medium); background: var(--cds-chart-grid); }
   .yk-fail { display: flex; align-items: center; justify-content: center; gap: .5rem; min-height: inherit; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
   .yk-fail::before { content: ""; width: .375rem; height: .375rem; border-radius: 50%; background: var(--color-bad); }
   .yk [data-dash-source-state="empty"] { color: transparent; }
@@ -229,13 +234,13 @@
 
     <div class="yk-card" id="game-list">
       <h2>Results</h2>
-      <p class="yk-note">Tap a game to see its box score below.</p>
+      <p class="yk-note">Tap a game to see its box score below, or pick one from the list in the box score.</p>
       <div class="yk-tablewrap">
         <table class="yk-rows" id="games-table" data-source="games" data-row-key="game">
           <thead><tr>
             <th data-field="game">#</th><th class="l" data-field="date">Date</th><th class="l" data-field="opponent">Opponent</th>
             <th data-source="results" data-field="result">Result</th><th data-field="yk_pts">Us</th><th data-field="opp_pts">Them</th>
-            <th data-field="yk_reb">Reb</th><th data-field="opp_reb">Opp reb</th><th data-field="yk_to">TO</th><th data-field="opp_to">Opp TO</th>
+            <th data-source="results" data-field="tp_pct">3P%</th><th data-source="results" data-field="opp_tp_pct">Opp 3P%</th><th data-field="yk_reb">Reb</th><th data-field="opp_reb">Opp reb</th><th data-field="yk_to">TO</th><th data-field="opp_to">Opp TO</th>
           </tr></thead>
           <tbody></tbody>
         </table>
@@ -243,7 +248,43 @@
     </div>
 
     <div class="yk-card" id="box-score">
-      <div class="yk-cardhead"><h2 id="box-title">Box score</h2><span class="yk-note" id="box-sub"></span></div>
+      <div class="yk-cardhead"><h2 id="box-title">Box score</h2>
+        <select class="yk-select" id="game-pick" aria-label="Pick a game" data-source="games"></select></div>
+      <p class="yk-note" id="box-sub"></p>
+      <div class="yk-boxgrid">
+        <div>
+          <h3 class="yk-sub-h">Score by half</h3>
+          <div class="yk-tablewrap">
+            <table class="yk-compare" id="halves-table" data-source="games">
+              <thead><tr><th>Team</th><th data-field="yk_h1">1st half</th><th data-field="yk_h2">2nd half</th><th data-field="yk_pts">Final</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p class="yk-note" id="halves-note" hidden>This game was played as one period, so there is no half-by-half score.</p>
+        </div>
+        <div>
+          <h3 class="yk-sub-h">Team stats</h3>
+          <div class="yk-tablewrap">
+            <table class="yk-compare" id="team-stats-table" data-source="games">
+              <thead><tr><th>Stat</th><th>Young Knights</th><th id="team-stats-opp">Opponent</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <h3 class="yk-sub-h" id="opp-box-title">Opponent box score</h3>
+      <div class="yk-tablewrap">
+        <table id="opp-box" data-source="games">
+          <thead><tr><th class="l">Team</th><th data-field="opp_pts">PTS</th><th data-field="opp_fgm">FGM</th><th data-field="opp_fga">FGA</th>
+            <th data-field="opp_tpm">3PM</th><th data-field="opp_tpa">3PA</th><th data-field="opp_ftm">FTM</th><th data-field="opp_fta">FTA</th>
+            <th data-field="opp_orb">ORB</th><th data-field="opp_drb">DRB</th><th data-field="opp_reb">REB</th><th data-field="opp_to">TO</th><th data-field="opp_pf">PF</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="yk-note">GameChanger records the opponent as one team line, so individual opponent players aren't available.</p>
+
+      <h3 class="yk-sub-h">Young Knights box score</h3>
       <div class="yk-tablewrap">
         <table id="box-table" data-source="game_log" data-row-key="game,player">
           <thead><tr>
@@ -383,10 +424,11 @@ dash.calc('compare', {
 dash.calc('results', {
   inputs: ['games'],
   title: 'Game results',
-  description: 'Win or loss and point margin for each game.',
+  description: 'Win or loss, point margin and 3-point % for both teams in each game.',
   fn: (games) => games.map((g) => {
     const margin = Number(g.yk_pts) - Number(g.opp_pts);
-    return { game: g.game, result: margin > 0 ? 'W' : margin < 0 ? 'L' : 'T', margin };
+    const rate = (m, a) => (Number(a) ? Number(m) / Number(a) : null);
+    return { game: g.game, result: margin > 0 ? 'W' : margin < 0 ? 'L' : 'T', margin, tp_pct: rate(g.yk_tpm, g.yk_tpa), opp_tp_pct: rate(g.opp_tpm, g.opp_tpa) };
   }),
 });
 </script>
@@ -569,29 +611,69 @@ dash.calc('results', {
       if (sel && g.n === sel.n) tr.classList.add('sel');
       const r = res.get(String(g.game));
       const cells = [[g.game], [md(g.d), 'l'], [g.opponent, 'l name'], [r ? r.result : '', r ? (r.result === 'W' ? 'w' : 'lo') : ''],
-        [g.yk_pts], [g.opp_pts], [g.yk_reb], [g.opp_reb], [g.yk_to], [g.opp_to]];
+        [g.yk_pts], [g.opp_pts], [r && r.tp_pct != null ? pct(r.tp_pct) : '–'], [r && r.opp_tp_pct != null ? pct(r.opp_tp_pct) : '–'],
+        [g.yk_reb], [g.opp_reb], [g.yk_to], [g.opp_to]];
       tr.append(...cells.map(([v, cls]) => { const td = document.createElement('td'); td.textContent = v; if (cls) td.className = cls; return td; }));
       return tr;
     }));
   }
 
+  const td = (v, cls) => { const c = document.createElement('td'); c.textContent = v; if (cls) c.className = cls; return c; };
+  const mkRow = (cells, cls) => { const tr = document.createElement('tr'); if (cls) tr.className = cls; tr.append(...cells); return tr; };
+  const gamePick = root.querySelector('#game-pick');
+  gamePick.addEventListener('change', () => dash.setParams({ game: Number(gamePick.value) }));
+
   function drawBox() {
     const g = selectedGame();
+    const games = gamesRows();
+    gamePick.replaceChildren(...games.slice().reverse().map((x) => new Option(`${md(x.d)} vs ${x.opponent}`, String(x.n))));
+    if (!g) return;
+    gamePick.value = String(g.n);
+    const n = (k) => Number(g[k]);
+    root.querySelector('#box-title').textContent = 'Box score';
+    root.querySelector('#box-sub').textContent = `${md(g.d)} vs ${g.opponent}: ${n('yk_pts') > n('opp_pts') ? 'W' : 'L'} ${g.yk_pts}–${g.opp_pts}${g.home_away ? ', ' + g.home_away.toLowerCase() : ''}`;
+
+    const hasHalves = g.yk_h1 !== '' && g.yk_h1 != null;
+    root.querySelector('#halves-note').hidden = hasHalves;
+    root.querySelector('#halves-table tbody').replaceChildren(
+      mkRow([td('Young Knights', 'name'), td(hasHalves ? g.yk_h1 : '–'), td(hasHalves ? g.yk_h2 : '–'), td(g.yk_pts, 'name')]),
+      mkRow([td(g.opponent, 'name'), td(hasHalves ? g.opp_h1 : '–'), td(hasHalves ? g.opp_h2 : '–'), td(g.opp_pts, 'name')]));
+
+    root.querySelector('#team-stats-opp').textContent = g.opponent;
+    const ma = (m, a) => `${g[m]}-${g[a]}`;
+    const rt = (m, a) => (n(a) ? pct(n(m) / n(a)) : '–');
+    const stats = [
+      ['Points', g.yk_pts, g.opp_pts],
+      ['Field goals', ma('yk_fgm', 'yk_fga'), ma('opp_fgm', 'opp_fga')],
+      ['FG%', rt('yk_fgm', 'yk_fga'), rt('opp_fgm', 'opp_fga')],
+      ['3-pointers', ma('yk_tpm', 'yk_tpa'), ma('opp_tpm', 'opp_tpa')],
+      ['3P%', rt('yk_tpm', 'yk_tpa'), rt('opp_tpm', 'opp_tpa')],
+      ['Free throws', ma('yk_ftm', 'yk_fta'), ma('opp_ftm', 'opp_fta')],
+      ['FT%', rt('yk_ftm', 'yk_fta'), rt('opp_ftm', 'opp_fta')],
+      ['Rebounds', g.yk_reb, g.opp_reb],
+      ['Offensive rebounds', g.yk_orb, g.opp_orb],
+      ['Defensive rebounds', g.yk_drb, g.opp_drb],
+      ['Assists', g.yk_ast, 'Not tracked'],
+      ['Steals', g.yk_stl, 'Not tracked'],
+      ['Blocks', g.yk_blk, 'Not tracked'],
+      ['Turnovers', g.yk_to, g.opp_to],
+      ['Fouls', g.yk_pf, g.opp_pf],
+    ];
+    root.querySelector('#team-stats-table tbody').replaceChildren(...stats.map(([l, a, b]) => mkRow([td(l), td(a), td(b)])));
+
+    root.querySelector('#opp-box-title').textContent = `${g.opponent} box score`;
+    root.querySelector('#opp-box tbody').replaceChildren(mkRow([td('Team', 'l name'),
+      ...['opp_pts', 'opp_fgm', 'opp_fga', 'opp_tpm', 'opp_tpa', 'opp_ftm', 'opp_fta', 'opp_orb', 'opp_drb', 'opp_reb', 'opp_to', 'opp_pf'].map((k) => td(g[k]))]));
+
     const tbody = root.querySelector('#box-table tbody');
-    if (!g) { tbody.replaceChildren(); return; }
-    root.querySelector('#box-title').textContent = `Box score: ${md(g.d)} vs ${g.opponent}`;
-    const margin = g.yk_pts - g.opp_pts;
-    root.querySelector('#box-sub').textContent = `${margin > 0 ? 'W' : 'L'} ${g.yk_pts}–${g.opp_pts}`;
+    if (!ok('game_log')) { tbody.replaceChildren(); return; }
     const rows = get('game_log').data.filter((r) => String(r.game) === String(g.game))
       .sort((a, b) => (a.player === 'Unassigned') - (b.player === 'Unassigned') || b.pts - a.pts);
     const cols = ['pts', 'fgm', 'fga', 'tpm', 'tpa', 'ftm', 'fta', 'orb', 'drb', 'reb', 'ast', 'stl', 'blk', 'to', 'pf', 'plus_minus'];
-    tbody.replaceChildren(...rows.map((r) => {
-      const tr = document.createElement('tr');
+    const total = mkRow([td('Team totals', 'l name'), ...cols.map((c) => td(c === 'plus_minus' ? '' : d3.sum(rows, (r) => +r[c])))], 'yk-total');
+    tbody.replaceChildren(total, ...rows.map((r) => {
+      const tr = mkRow([td(r.player, 'l name'), ...cols.map((c) => td(r[c]))]);
       tr.dataset.key = `${encodeURIComponent(r.game)},${encodeURIComponent(r.player)}`;
-      const name = document.createElement('td');
-      name.className = 'l name';
-      name.textContent = r.player;
-      tr.append(name, ...cols.map((c) => { const td = document.createElement('td'); td.textContent = r[c]; return td; }));
       return tr;
     }));
   }
@@ -858,7 +940,7 @@ dash.calc('results', {
           { name: 'Forced', color: C_YK(), value: (g) => +g.opp_to },
         ], String);
         drawGamesTable();
-        if (ok('game_log')) drawBox();
+        drawBox();
       } else if (failed('games')) ['points', 'fg', 'to'].forEach((n) => showFail(chartEl(n)));
     }
     if (current === 'players') {
